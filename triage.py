@@ -89,5 +89,5 @@ application = tornado.web.Application([
 ])
 
 if __name__ == "__main__":
-    application.listen(8888)
+    application.listen(7777)
     tornado.ioloop.IOLoop.instance().start()
