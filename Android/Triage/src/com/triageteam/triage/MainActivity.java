@@ -19,7 +19,8 @@ import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.Toast;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 
 public class MainActivity extends Activity {
 
@@ -71,6 +72,48 @@ public class MainActivity extends Activity {
 		return jArray;
 	}
 
+	void updateList(JSONArray finalArray) {
+
+		ListView list = (ListView) findViewById(R.id.catastropheList);
+		
+		ArrayList<String> xxx = new ArrayList<String>();
+		
+		try  {
+		
+		for (int i = 0; i< finalArray.length(); i++) {
+			//xxx.add(finalArray.getInt(i));
+			JSONObject jo = (JSONObject) finalArray.get(i);
+			xxx.add((String) jo.getString("description"));
+			
+		}
+		
+		}
+		catch (Exception e) {
+			// ignor
+		}
+		//for ()
+		
+		
+		
+//		String[] values = new String[] { "Android", "iPhone", "WindowsMobile",
+//				  "Blackberry", "WebOS", "Ubuntu", "Windows7", "Max OS X",
+//				  "Linux", "OS/2" };
+
+				// First paramenter - Context
+				// Second parameter - Layout for the row
+				// Third parameter - ID of the TextView to which the data is written
+				// Forth - the Array of data
+				ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+				  android.R.layout.simple_list_item_1, android.R.id.text1, xxx);
+
+				// Assign adapter to ListView
+				list.setAdapter(adapter); 
+		
+		//list.u
+		
+	}
+	
+	
 	private class Connect extends AsyncTask {
 		ArrayList<HashMap<String, String>> myJSONList = new ArrayList<HashMap<String, String>>();
 
@@ -93,11 +136,27 @@ public class MainActivity extends Activity {
 				Log.e("log_tag", "Error parsing data " + e.toString());
 			}
 
+			//Toast.makeText(MainActivity.this, "onPostExecute", Toast.LENGTH_LONG).show();
+			
+			doit(finalArray);
+			
 			return finalArray;
 		}
 		
+		private void doit(final JSONArray finalArray) {
+			MainActivity.this.runOnUiThread(new Runnable() {
+			    public void run() {
+			    	//titleProgress.setVisibility(View.INVISIBLE);
+					//Toast.makeText(MainActivity.this, "onPostExecute", Toast.LENGTH_LONG).show();
+			    	MainActivity.this.updateList(finalArray);
+			    }
+			});
+		}
+		
 		protected void onPostExecute() {
-			Toast.makeText(MainActivity.this, "onPostExecute", Toast.LENGTH_LONG).show();
+			//doit(null);
+			
+			
 		}
 	}
 }
