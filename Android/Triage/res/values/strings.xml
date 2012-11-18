@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Triage</string>
+    <string name="menu_settings">Impostazioni</string>
+    <string name="green_button">Verde</string>
+    <string name="yellow_button">Giallo</string>
+    <string name="red_button">Rosso</string>
+    <string name="black_button">Nero</string>
+    <string name="menu_position">Posizione</string>
+    <string name="recvictim_button">Registra</string>
+
+</resources>
