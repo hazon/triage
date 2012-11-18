@@ -12,155 +12,82 @@ from pymongo import Connection
 class Home(tornado.web.RequestHandler):
 
     def initialize(self, connection):
-        self.conn = connection
-        self.db = self.conn['triage']
-        # self.collection = self.db['events']
+        self.db = connection['triage']
         self.catastrophes = self.db['catastrophes']
         self.victims = self.db['victims']
 
-        ## sample event
-        timestamp = str(datetime.now())
-
-        catastrophe = {
-                "description": "Demo Earthquake",
-                "timestamp": timestamp
-        }
-
-        # catastrophe_id = self.db.ctastrophes.insert(catastrophe)
-
-        # for num in range(0,5):
-        #     victim = {
-        #         "user_name": "John Doe",
-        #         "catastrophe_id": catastrophe_id, 
-        #         "latitude": 0.0,
-        #         "longitude": 0.0,
-        #         "precision": 0.0, 
-        #         "timestamp": timestamp,
-        #         "color_code" : 'red'
-        #     }
-
-        #     self.db.victims.insert(victim)
-
-    def outputVictims(self, victims):
+    def output_victims(self, victims):
         for v in victims:
             del(v["_id"])
+	    v["timestamp"] = str(v["timestamp"])
             del(v["catastrophe_id"])
-        self.write(json.dumps(victims, ensure_ascii=True))
+        self.write(json.dumps(victims, ensure_ascii=True, indent = 4))
 
-
-
-
-
-class Catastrophes(Home):
+class Catastrophe(Home):
 
     def get(self, catastrophe_id):
-        catastrophe = self.db.catastrophes.find_one({"_id":int(catastrophe_id)})
+        catastrophe = self.catastrophes.find_one({"_id": ObjectId(catastrophe_id)})
+	if not catastrophe:
+		raise tornado.web.HTTPError(404)
+
         self.set_header('Content-Type', 'application/json')
+	catastrophe["_id"] = str(catastrophe["_id"])
+	catastrophe["timestamp"] = str(catastrophe["timestamp"])
         self.write(dumps(catastrophe))
+
+class AllCatastrophes(Home):
+
+    def get(self):
+        catastrophes = list(self.catastrophes.find())
+        self.set_header('Content-Type', 'application/json')
+	for c in catastrophes:
+		c["_id"] = str(c["_id"])
+		c["timestamp"] = str(c["timestamp"])
+	
+
+        self.write(dumps(catastrophes))
 
     def post(self):
         timestamp = datetime.now()
-        catastrophe_dto = json.loads(self.request.body)
-        catastrophe = {
-                "description": catastrophe_dto['description'],
-                "timestamp" : timestamp
-        }
+        catastrophe = json.loads(self.request.body)
+	catastrophe["timestamp"] = timestamp
+	self.catastrophes.insert(catastrophe)
 
-        _id = self.db.catastrophes.insert(catastrophe)
-        location = "/catastrophe/"+ str(_id)
-        self.set_header('Content-Type', 'application/json')
-        self.set_header('Location', location)
-        self.set_status(201)
-        self.write(dumps(catastrophe))
-
-    # def put(self, eventid):
-    #     ## Convert unicode to int
-    #     _id = int(eventid)
-    #     timestamp = datetime.now()
-    #     body = urlparse.parse_qs(self.request.body)
-    #     for key in body:
-    #             body[key] = body[key][0]
-    #     event = {
-    #             "title": body['title'],
-    #             "tags": body['tags'],
-    #             "category": body['category'],
-    #             "timestamp": timestamp
-    #     }
-    #     self.db.events.update({"_id":_id}, {"$set":event})
-    #     self.set_header('Content-Type', 'application/json')
-    #     self.write(dumps(event))
-
-    # def delete(self,eventid):
-    #     ## Convert unicode to int
-    #     _id = int(eventid)
-    #     event = {
-    #             "title": None,
-    #             "tags": [],
-    #             "category": [],
-    #             "timestamp": None,
-    #     }
-    #     self.db.events.update({"_id":_id}, {"$set":event})
-    #     self.set_header('Content-Type', 'application/json')
-    #     self.write(dumps(event))
 
 class AllVictims(Home):
 
     def get(self):
-        # victims = str(list(self.db.victims.find()))
-        victims = list(self.db.victims.find())
-        # victims_utf8 = [str(s).encode('utf-8') for s in victims]
+        victims = self.victims.find()
         self.set_header('Content-Type', 'application/json')
-        # self.write(dumps(victims))
-        self.outputVictims(victims)
-        # for v in victims:
-        #     del(v["_id"])
-        #     del(v["catastrophe_id"])
+        self.output_victims(list(victims))
 
-        # self.write(json.dumps(victims, ensure_ascii=True))
+    def post(self):
+        timestamp = datetime.now()
+        victim = json.loads(self.request.body)
+	
+	if not self.catastrophes.find({}).count():
+		raise tornado.web.HTTPError(404)
 
+	victim["catastrophe_id"] = ObjectId(victim["catastrophe_id"])
+	victim["timestamp"] = timestamp
+       	self.victims.insert(victim)
 
 class Victims(Home):
 
     def get(self, catastrophe_id):
-        victims = list(self.db.victims.find({"catastrophe_id":ObjectId(catastrophe_id)}))
+        victims = self.victims.find({"catastrophe_id":ObjectId(catastrophe_id)})
+	if not victims.count():
+		raise tornado.web.HTTPError(404)
         self.set_header('Content-Type', 'application/json')
-        self.outputVictims(victims)
-
-    def post(self):
-        # _id = self.db.events.count() + 1
-        timestamp = datetime.now()
-        #body = urlparse.parse_qs(self.request.body)
-        victim_dto = json.loads(self.request.body)
-        # for key in body:
-        #       body[key] = body[key][0]
-        
-        victim = {
-                "user_name": victim_dto['user_name'],
-                "catastrophe_id": victim_dto['catastrophe_id'],
-                "latitude": victim_dto['latitude'],
-                "longitude": victim_dto['longitude'],
-                "precision": victim_dto['precision'],
-                "color_code" : victim_dto['color_code'],
-                "timestamp": timestamp
-        }
-
-
-    # def delete(self):
-    #     events = str(list(self.db.events.find()))
-    #     self.set_header('Content-Type', 'application/json')
-    #     self.db.events.drop()
-    #     self.write(dumps(events))
+        self.output_victims(list(victims))
 
 application = tornado.web.Application([
-    (r"/", Home),
-    # (r"/catastrophe/([A-Za-z0-9]+)", Catastrophes, dict(connection = Connection()) ),
-    (r"/catastrophe/", Catastrophes, dict(connection =  Connection()) ),
-    (r"/victim/([a-f0-9]+)", Victims, dict(connection =  Connection()) ),
-    (r"/victim/", AllVictims, dict(connection =  Connection()) ),
-],debug=True)
+    (r"/catastrophes/([a-f0-9]+)", Catastrophe, dict(connection =  Connection()) ),
+    (r"/catastrophes/", AllCatastrophes, dict(connection =  Connection()) ),
+    (r"/victims/([a-f0-9]+)", Victims, dict(connection =  Connection()) ),
+    (r"/victims/", AllVictims, dict(connection =  Connection()) ),
+])
 
 if __name__ == "__main__":
-    application.listen(7777)
+    application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()
-
-# 50a82d9bfba662391c3379b0
