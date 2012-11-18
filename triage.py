@@ -7,6 +7,7 @@ from bson.objectid import ObjectId
 import json
 import pymongo
 from pymongo import Connection
+import logging
 
 class Home(tornado.web.RequestHandler):
 
@@ -20,7 +21,7 @@ class Home(tornado.web.RequestHandler):
             del(v["_id"])
 	    v["timestamp"] = str(v["timestamp"])
             del(v["catastrophe_id"])
-        self.write(json.dumps(victims, ensure_ascii=True, indent = 4))
+        self.write(json.dumps(victims, ensure_ascii=True))
 
 class Catastrophe(Home):
 
@@ -32,7 +33,7 @@ class Catastrophe(Home):
         self.set_header('Content-Type', 'application/json')
 	catastrophe["_id"] = str(catastrophe["_id"])
 	catastrophe["timestamp"] = str(catastrophe["timestamp"])
-        self.write(dumps(catastrophe, ensure_ascii = True, indent = 4))
+        self.write(dumps(catastrophe, ensure_ascii = True))
 
 class AllCatastrophes(Home):
 
@@ -46,10 +47,11 @@ class AllCatastrophes(Home):
 		c["active"] = False
 
 	catastrophes[len(catastrophes)-1]["active"] = True
-        self.write(dumps(catastrophes, ensure_ascii = True, indent = 4))
+        self.write(dumps(catastrophes, ensure_ascii = True))
 
     def post(self):
         timestamp = datetime.now()
+	catastrophe = None
 	try:
 		catastrophe = json.loads(self.request.body)
 	except:
@@ -67,12 +69,15 @@ class AllVictims(Home):
 
     def post(self):
         timestamp = datetime.now()
+	victim = None
 	try:
         	victim = json.loads(self.request.body)
 	except:
-		tornado.web.HTTPError(400)
+		print "problem parsing", self.request.body
+		raise tornado.web.HTTPError(400)
 
-	if not self.catastrophes.find({}).count():
+	if not self.catastrophes.find({"catastrophe_id": ObjectId(victim["catastrophe_id"])}).count():
+		print "can't find catastrophe", victim["catastrophe_id"]
 		raise tornado.web.HTTPError(404)
 
 	victim["catastrophe_id"] = ObjectId(victim["catastrophe_id"])
@@ -90,11 +95,12 @@ class Victims(Home):
 
 application = tornado.web.Application([
     (r"/catastrophes/([a-f0-9]+)", Catastrophe, dict(connection =  Connection()) ),
-    (r"/catastrophes/", AllCatastrophes, dict(connection =  Connection()) ),
+    (r"/catastrophes/?", AllCatastrophes, dict(connection =  Connection()) ),
     (r"/victims/([a-f0-9]+)", Victims, dict(connection =  Connection()) ),
-    (r"/victims/", AllVictims, dict(connection =  Connection()) ),
+    (r"/victims/?", AllVictims, dict(connection =  Connection()) ),
 ])
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     application.listen(7777)
     tornado.ioloop.IOLoop.instance().start()
