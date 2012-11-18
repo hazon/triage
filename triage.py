@@ -8,7 +8,6 @@ import json
 import pymongo
 from pymongo import Connection
 
-
 class Home(tornado.web.RequestHandler):
 
     def initialize(self, connection):
@@ -33,23 +32,28 @@ class Catastrophe(Home):
         self.set_header('Content-Type', 'application/json')
 	catastrophe["_id"] = str(catastrophe["_id"])
 	catastrophe["timestamp"] = str(catastrophe["timestamp"])
-        self.write(dumps(catastrophe))
+        self.write(dumps(catastrophe, ensure_ascii = True, indent = 4))
 
 class AllCatastrophes(Home):
 
     def get(self):
         catastrophes = list(self.catastrophes.find())
         self.set_header('Content-Type', 'application/json')
+
 	for c in catastrophes:
 		c["_id"] = str(c["_id"])
 		c["timestamp"] = str(c["timestamp"])
-	
+		c["active"] = False
 
-        self.write(dumps(catastrophes))
+	catastrophes[len(catastrophes)-1]["active"] = True
+        self.write(dumps(catastrophes, ensure_ascii = True, indent = 4))
 
     def post(self):
         timestamp = datetime.now()
-        catastrophe = json.loads(self.request.body)
+	try:
+		catastrophe = json.loads(self.request.body)
+	except:
+		raise tornado.web.HTTPError(400)
 	catastrophe["timestamp"] = timestamp
 	self.catastrophes.insert(catastrophe)
 
@@ -63,8 +67,11 @@ class AllVictims(Home):
 
     def post(self):
         timestamp = datetime.now()
-        victim = json.loads(self.request.body)
-	
+	try:
+        	victim = json.loads(self.request.body)
+	except:
+		tornado.web.HTTPError(400)
+
 	if not self.catastrophes.find({}).count():
 		raise tornado.web.HTTPError(404)
 
